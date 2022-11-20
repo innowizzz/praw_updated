@@ -6,6 +6,14 @@ PRAW follows `semantic versioning <http://semver.org/>`_.
 Unreleased
 ----------
 
+**Added**
+
+- Ability to add inline media to existing posts.
+- ``preserve_inline_media`` keyword argument to :meth:`~.Submission.edit` to allow PRAW
+  to attempt to preserve inline media when editing a post. This is an experimental fix
+  for an issue when editing a post with inline media would cause the media to lose their
+  inline appearance.
+
 7.6.1 (2022/11/11)
 ------------------
 

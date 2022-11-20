@@ -1,14 +1,21 @@
+import sys
+from os.path import abspath, dirname, join
 from unittest import mock
 
 import pytest
 
 from praw.exceptions import RedditAPIException
-from praw.models import Comment, Submission
+from praw.models import Comment, InlineGif, InlineImage, InlineVideo, Submission
 
 from ... import IntegrationTest
 
 
 class TestSubmission(IntegrationTest):
+    @staticmethod
+    def image_path(name):
+        test_dir = abspath(dirname(sys.modules[__name__].__file__))
+        return join(test_dir, "..", "..", "files", name)
+
     def test_comments(self):
         with self.use_cassette():
             submission = Submission(self.reddit, "2gmzqe")
@@ -53,6 +60,73 @@ class TestSubmission(IntegrationTest):
             submission = Submission(self.reddit, "4b1tfm")
             submission.edit("New text")
             assert submission.selftext == "New text"
+
+    @mock.patch("time.sleep", return_value=None)
+    def test_edit__existing_and_new_inline_media(self, _):
+        self.reddit.read_only = False
+        with self.use_cassette():
+            submission = Submission(self.reddit, "vgyx3f")
+            submission2 = Submission(self.reddit, "vgyx3f")
+            gif = InlineGif(
+                path=self.image_path("test.gif"), caption="optional caption"
+            )
+            image = InlineImage(
+                path=self.image_path("test.png"), caption="optional caption"
+            )
+            video = InlineVideo(
+                path=self.image_path("test.mp4"), caption="optional caption"
+            )
+            original_selftext = submission.selftext
+            selftext = "\n\nNew text with a gif {gif1} an image {image1} and a video {video1} inline"
+            media = {"gif1": gif, "image1": image, "video1": video}
+            submission.edit(
+                original_selftext + selftext,
+                preserve_inline_media=True,
+                inline_media=media,
+            )
+            assert (
+                original_selftext + "\n\nNew text with a"
+                " gif\n\n[optional caption](https://i.redd.it/ddz5l4m5uz0a1.gif)\n\nan"
+                " image\n\n[optional"
+                " caption](https://preview.redd.it/l4efuno5uz0a1.png?width=128&format=png&auto=webp&s=6f254c21da86ef0f1a0f560d3af027123db1f332)\n\nand"
+                " a video\n\n[optional"
+                " caption](https://reddit.com/link/vgyx3f/video/pvuxelq5uz0a1/player)\n\ninline"
+                == submission2.selftext
+            )
+
+    @mock.patch("time.sleep", return_value=None)
+    def test_edit__existing_inline_media(self, _):
+        self.reddit.read_only = False
+        with self.use_cassette():
+            submission = Submission(self.reddit, "vgyx3f")
+            submission.edit(submission.selftext)
+            assert Submission(self.reddit, "vgyx3f").selftext == submission.selftext
+
+    @mock.patch("time.sleep", return_value=None)
+    def test_edit__new_inline_media(self, _):
+        self.reddit.read_only = False
+        with self.use_cassette():
+            original_selftext = "Test selftext"
+            submission = self.reddit.subreddit(
+                pytest.placeholders.test_subreddit
+            ).submit("Test post", selftext=original_selftext)
+            submission2 = Submission(self.reddit, submission.id)
+            gif = InlineGif(self.image_path("test.gif"), "optional caption")
+            image = InlineImage(self.image_path("test.png"), "optional caption")
+            video = InlineVideo(self.image_path("test.mp4"), "optional caption")
+            original_selftext = submission.selftext
+            selftext = "\n\nNew text with a gif {gif1} an image {image1} and a video {video1} inline"
+            media = {"gif1": gif, "image1": image, "video1": video}
+            submission.edit(original_selftext + selftext, inline_media=media)
+            assert (
+                original_selftext + "\n\nNew text with a gif\n\n[optional"
+                " caption](https://i.redd.it/sepreqswuz0a1.gif)\n\nan"
+                " image\n\n[optional"
+                " caption](https://preview.redd.it/rhqiqluwuz0a1.png?width=128&format=png&auto=webp&s=0377d22ef695fbda17b9dcae1f0a8d596da31e68)\n\nand"
+                " a video\n\n[optional"
+                " caption](https://reddit.com/link/yzpjb1/video/3o0v74wwuz0a1/player)\n\ninline"
+                == submission2.selftext
+            )
 
     @mock.patch("time.sleep", return_value=None)
     def test_edit_invalid(self, _):
