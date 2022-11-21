@@ -211,9 +211,9 @@ class Subreddit(MessageableMixin, SubredditListingMixin, FullnameMixin, RedditBa
     def _validate_gallery(images):
         for image in images:
             image_path = image.get("image_path", "")
-            if image_path:
-                if not isfile(image_path):
-                    raise TypeError(f"{image_path!r} is not a valid image path.")
+            if image_path and if not isfile(image_path):
+                raise TypeError(f"{image_path!r} is not a valid image path.")
+                       
             else:
                 raise TypeError("'image_path' is required.")
             if not len(image.get("caption", "")) <= 180:
