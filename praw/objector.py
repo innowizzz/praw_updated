@@ -2,35 +2,26 @@
 from datetime import datetime
 from json import loads
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
-
 from .exceptions import ClientException, RedditAPIException
 from .models.reddit.base import RedditBase
 from .util import snake_case_keys
-
 if TYPE_CHECKING:  # pragma: no cover
     import praw
-
-
 class Objector:
     """The objector builds :class:`.RedditBase` objects."""
-
     @classmethod
     def parse_error(
         cls, data: Union[List[Any], Dict[str, Dict[str, str]]]
     ) -> Optional[RedditAPIException]:
         """Convert JSON response into an error object.
-
         :param data: The dict to be converted.
-
         :returns: An instance of :class:`.RedditAPIException`, or ``None`` if ``data``
             doesn't fit this model.
-
         """
         if isinstance(data, list):
             # Fetching a Submission returns a list (of two items). Although it's handled
             # manually in `Submission._fetch()`, assume it's a possibility here.
             return None
-
         errors = data.get("json", {}).get("errors")
         if errors is None:
             return None
@@ -38,30 +29,22 @@ class Objector:
             # See `Collection._fetch()`.
             raise ClientException("successful error response", data)
         return RedditAPIException(errors)
-
     @classmethod
     def check_error(cls, data: Union[List[Any], Dict[str, Dict[str, str]]]):
         """Raise an error if the argument resolves to an error object."""
         error = cls.parse_error(data)
         if error:
             raise error
-
     def __init__(self, reddit: "praw.Reddit", parsers: Optional[Dict[str, Any]] = None):
         """Initialize an :class:`.Objector` instance.
-
         :param reddit: An instance of :class:`.Reddit`.
-
         """
         self.parsers = {} if parsers is None else parsers
         self._reddit = reddit
-
     def _objectify_dict(self, data):
         """Create :class:`.RedditBase` objects from dicts.
-
         :param data: The structured data, assumed to be a dict.
-
         :returns: An instance of :class:`.RedditBase`.
-
         """
         if {"messages", "modActions"}.issubset(data) and {
             "conversations",
@@ -135,8 +118,7 @@ class Objector:
         elif {"text", "url"}.issubset(data):
             if "color" in data or "linkUrl" in data:
                 parser = self.parsers["Button"]
-            else:
-                parser = self.parsers["MenuLink"]
+            parser = self.parsers["MenuLink"]
         elif {"children", "text"}.issubset(data):
             parser = self.parsers["Submenu"]
         elif {"height", "url", "width"}.issubset(data):
@@ -207,17 +189,13 @@ class Objector:
                 data["user"] = parser.parse({"name": data["user"]}, self._reddit)
             return data
         return parser.parse(data, self._reddit)
-
     def objectify(
         self, data: Optional[Union[Dict[str, Any], List[Any], bool]]
     ) -> Optional[Union[RedditBase, Dict[str, Any], List[Any], bool]]:
         """Create :class:`.RedditBase` objects from data.
-
         :param data: The structured data.
-
         :returns: An instance of :class:`.RedditBase`, or ``None`` if given ``data`` is
             ``None``.
-
         """
         # pylint: disable=too-many-return-statements
         if data is None:  # 204 no content
@@ -230,9 +208,7 @@ class Objector:
             errors = data["json"]["errors"]
             if len(errors) > 0:
                 raise RedditAPIException(errors)
-        if "kind" in data and (
-            "shortName" in data or data["kind"] in ("menu", "moderators")
-        ):
+        if "kind" in data and ("shortName" in data or data["kind"] in ("menu", "moderators")):
             # This is a widget
             parser = self.parsers.get(data["kind"], self.parsers["widget"])
             return parser.parse(data, self._reddit)
@@ -240,8 +216,7 @@ class Objector:
             parser = self.parsers[data["kind"]]
             if data["kind"] == "ModeratedList":
                 return parser.parse(data, self._reddit)
-            else:
-                return parser.parse(data["data"], self._reddit)
+            return parser.parse(data["data"], self._reddit)
         if "json" in data and "data" in data["json"]:
             if "websocket_url" in data["json"]["data"]:
                 return data
@@ -258,15 +233,10 @@ class Objector:
                 # The URL is the URL to the submission, so it's removed.
                 del data["json"]["data"]["url"]
                 parser = self.parsers[self._reddit.config.kinds["submission"]]
-                if data["json"]["data"]["id"].startswith(
-                    f"{self._reddit.config.kinds['submission']}_"
-                ):
+                if data["json"]["data"]["id"].startswith(f"{self._reddit.config.kinds['submission']}_" ):
                     # With polls, Reddit returns a fullname but calls it an "id". This
                     # fixes this by coercing the fullname into an id.
-                    data["json"]["data"]["id"] = data["json"]["data"]["id"].split(
-                        "_", 1
-                    )[1]
-            else:
+                    data["json"]["data"]["id"] = data["json"]["data"]["id"].split("_", 1)[1]
                 parser = self.parsers["LiveUpdateEvent"]
             return parser.parse(data["json"]["data"], self._reddit)
         if {"is_public_link", "title", "body"}.issubset(data):
@@ -276,5 +246,4 @@ class Objector:
             return self.objectify(data["rules"])
         elif isinstance(data, dict):
             return self._objectify_dict(data)
-
         return data
