@@ -689,10 +689,7 @@ class Reddit:
             api_parameter_name = "id" if is_using_fullnames else "sr_name"
 
             def generator(names):
-                if is_using_fullnames:
-                    iterable = iter(names)
-                else:
-                    iterable = iter([str(item) for item in names])
+                iterable = iter(names) if is_using_fullnames else iter([str(item) for item in names])
                 while True:
                     chunk = list(islice(iterable, 100))
                     if not chunk:
